@@ -18,7 +18,7 @@ var (
 	progBuild string
 
 	// Full semantic version for the service.
-	progVersion = semver.Version{
+	Version = semver.Version{
 		Major: progMajor,
 		Minor: progMinor,
 		Patch: progPatch,
@@ -34,6 +34,6 @@ var (
 func init() {
 	// Add the build if available.
 	if progBuild != "" {
-		progVersion.Build = []string{progBuild}
+		Version.Build = []string{progBuild}
 	}
 }

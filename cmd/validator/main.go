@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"os"
 	"strings"
 	"text/tabwriter"
+	"text/template"
 
 	"github.com/chop-dbhi/data-models-service/client"
 	"github.com/chop-dbhi/data-models-validator"
@@ -13,12 +15,7 @@ import (
 
 const DataModelsService = "http://data-models.origins.link"
 
-var usage = `usage: data-models-validator [-model <model>]
-                                          [-version <version>]
-										  [-delim <delimiter>]
-										  [-compr <compression>]
-										  [-service <service>]
-										  ( <file>[:<table>]... | [:<table>] )
+var usage = `Data Models Validator - {{.Version}}
 
 The Data Models Validator reads a file containing data and checks it against
 the data model's schema. Input files or stream are delimited files (such as CSV)
@@ -31,17 +28,44 @@ which table the file corresponds to. The only time an explicit table should need
 to be used is if two tables have the same set of fields making the detection
 ambiguous.
 
+Usage:
+
+  data-models-validator [-model <model>]
+                        [-version <version>]
+                        [-delim <delimiter>]
+                        [-compr <compression>]
+                        [-service <service>]
+                        ( <file>[:<table>]... | [:<table>] )
+
 Examples:
 
-	# Validate person.csv file against the OMOP v5 data model.
-	data-models-validator -model omop -version 5.0.0 person.csv
+  # Validate person.csv file against the OMOP v5 data model.
+  data-models-validator -model omop -version 5.0.0 person.csv
 
-	# Validate foo.csv against the person table in the OMOP v5 data model.
-	data-models-validator -model omop -version 5.0.0 foo.csv:person
+  # Validate foo.csv against the person table in the OMOP v5 data model.
+  data-models-validator -model omop -version 5.0.0 foo.csv:person
 
-	# Validate the STDIN stream denoting it is tab-delimited and gzipped.
-	data-models-validator -model omop -version 5.0.0 -delim $'\t' -compr gzip
+  # Validate the STDIN stream denoting it is tab-delimited and gzipped.
+  data-models-validator -model omop -version 5.0.0 -delim $'\t' -compr gzip
+
+Website: https://github.com/chop-dbhi/data-models-validator
 `
+
+func init() {
+	var buf bytes.Buffer
+
+	cxt := map[string]interface{}{
+		"Version": validator.Version,
+	}
+
+	template.Must(template.New("usage").Parse(usage)).Execute(&buf, cxt)
+
+	usage = buf.String()
+
+	flag.Usage = func() {
+		fmt.Println(usage)
+	}
+}
 
 func main() {
 	var (
