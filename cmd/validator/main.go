@@ -17,6 +17,15 @@ const DataModelsService = "http://data-models.origins.link"
 
 var usage = `Data Models Validator - {{.Version}}
 
+Usage:
+
+  data-models-validator [-model <model>]
+                        [-version <version>]
+                        [-delim <delimiter>]
+                        [-compr <compression>]
+                        [-service <service>]
+                        ( <file>[:<table>]... | [:<table>] )
+
 The Data Models Validator reads a file containing data and checks it against
 the data model's schema. Input files or stream are delimited files (such as CSV)
 and optionally compressed using gzip or bzip2.
@@ -28,14 +37,7 @@ which table the file corresponds to. The only time an explicit table should need
 to be used is if two tables have the same set of fields making the detection
 ambiguous.
 
-Usage:
-
-  data-models-validator [-model <model>]
-                        [-version <version>]
-                        [-delim <delimiter>]
-                        [-compr <compression>]
-                        [-service <service>]
-                        ( <file>[:<table>]... | [:<table>] )
+Source: https://github.com/chop-dbhi/data-models-validator
 
 Examples:
 
@@ -47,8 +49,6 @@ Examples:
 
   # Validate the STDIN stream denoting it is tab-delimited and gzipped.
   data-models-validator -model omop -version 5.0.0 -delim $'\t' -compr gzip
-
-Website: https://github.com/chop-dbhi/data-models-validator
 `
 
 func init() {

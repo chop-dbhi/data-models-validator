@@ -1,5 +1,7 @@
 # Data Models Validator
 
+[![GoDoc](https://godoc.org/github.com/chop-dbhi/data-models-validator?status.svg)](https://godoc.org/github.com/chop-dbhi/data-models-validator)
+
 A validator for CSV files adhering to the [Data Models](https://github.com/chop-dbhi/data-models) specification.
 
 ## Install
