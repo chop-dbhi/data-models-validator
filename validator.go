@@ -7,8 +7,6 @@ import (
 	"github.com/chop-dbhi/data-models-service/client"
 )
 
-const DefaultMaxErrors = 10
-
 // Plan is composed of the set of validators used to evaluate
 // the field values.
 type Plan struct {
@@ -18,8 +16,6 @@ type Plan struct {
 type TableValidator struct {
 	Fields *client.Fields
 	Header []string
-
-	MaxErrors int
 
 	Plan   *Plan
 	result *Result
@@ -56,10 +52,6 @@ func (t *TableValidator) validateRow(row []string) error {
 
 	// Validate each value mapped to the respective field in the line.
 	for i, v = range row {
-		if t.errs >= t.MaxErrors {
-			return ErrTooManyErrors
-		}
-
 		f = t.fields[i]
 
 		// Run through all the validators.
@@ -197,12 +189,11 @@ func New(reader io.Reader, table *client.Table) *TableValidator {
 	cr.TrimLeadingSpace = true
 
 	return &TableValidator{
-		Fields:    table.Fields,
-		Plan:      new(Plan),
-		MaxErrors: DefaultMaxErrors,
-		length:    table.Fields.Len(),
-		reader:    reader,
-		csv:       cr,
-		result:    NewResult(),
+		Fields: table.Fields,
+		Plan:   new(Plan),
+		length: table.Fields.Len(),
+		reader: reader,
+		csv:    cr,
+		result: NewResult(),
 	}
 }
