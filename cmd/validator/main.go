@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"math/rand"
 	"os"
 	"strings"
-	"text/tabwriter"
 	"text/template"
 
 	"github.com/chop-dbhi/data-models-service/client"
 	"github.com/chop-dbhi/data-models-validator"
+	"github.com/olekukonko/tablewriter"
 )
 
 const DataModelsService = "http://data-models.origins.link"
@@ -133,8 +134,7 @@ func main() {
 		}
 	}
 
-	fmt.Printf("Model: %s\n", model.Name)
-	fmt.Printf("Version: %s\n", model.Version)
+	fmt.Printf("Validating against model '%s/%s'\n", model.Name, model.Version)
 
 	var (
 		tableName string
@@ -158,65 +158,92 @@ func main() {
 			tableName = toks[0]
 		}
 
-		if tableName == "" {
-			fmt.Println("error: table not specified")
+		if table = model.Tables.Get(tableName); table == nil {
+			fmt.Printf("* Unknown table '%s'.\nChoices are: %s\n", tableName, strings.Join(model.Tables.Names(), ", "))
 			continue
 		}
 
-		if table = model.Tables.Get(tableName); table == nil {
-			fmt.Printf("error: unknown table %s. choices are: %s\n", tableName, strings.Join(model.Tables.Names(), ", "))
-			continue
-		}
+		fmt.Printf("* Evaluating '%s' table in '%s'...\n", tableName, name)
 
 		// Open the reader.
 		reader, err := validator.Open(name, compr)
 
 		if err != nil {
-			fmt.Println(err)
+			fmt.Printf("* Could not open file: %s\n", err)
 			continue
 		}
-
-		defer reader.Close()
 
 		v := validator.New(reader, table)
 
 		if err = v.Init(); err != nil {
-			fmt.Printf("error: %v\n", err)
+			fmt.Printf("* Problem reading CSV header: %s\n", err)
+			reader.Close()
 			continue
 		}
 
-		fmt.Printf("Table: %s\n", table.Name)
-
-		// v.Plan.Print(os.Stdout)
-
 		if err = v.Run(); err != nil {
-			fmt.Printf("error: %v\n", err)
+			fmt.Printf("* Problem reading CSV data: %s\n", err)
 		}
 
-		// Print the results.
+		reader.Close()
+
+		tw := tablewriter.NewWriter(os.Stdout)
+
+		tw.SetHeader([]string{
+			"field",
+			"code",
+			"error",
+			"occurrences",
+			"sample",
+		})
+
+		// Build the result.
 		result := v.Result()
-
-		fmt.Println("Result:")
-
-		var errmap map[*validator.Error][]*validator.ValidationError
-
-		tw := tabwriter.NewWriter(os.Stdout, 0, 8, 4, '\t', tabwriter.AlignRight)
 
 		// Output the error occurrence per field.
 		for _, f := range v.Header {
-			errmap = result.FieldErrors(f)
+			errmap := result.FieldErrors(f)
 
 			if len(errmap) == 0 {
 				continue
 			}
 
-			fmt.Fprintf(tw, "%s:\n", f)
+			var (
+				sample []*validator.ValidationError
+				ssize  = 5
+			)
 
 			for err, verrs := range errmap {
-				fmt.Fprintf(tw, "\t- %v\t%d\n", err, len(verrs))
+				num := len(verrs)
+
+				if num >= ssize {
+					sample = make([]*validator.ValidationError, ssize)
+
+					// Randomly sample.
+					for i, _ := range sample {
+						j := rand.Intn(num)
+						sample[i] = verrs[j]
+					}
+				} else {
+					sample = verrs
+				}
+
+				sstrings := make([]string, len(sample))
+
+				for i, ve := range sample {
+					sstrings[i] = fmt.Sprintf("%d:'%v'", ve.Line, ve.Value)
+				}
+
+				tw.Append([]string{
+					f,
+					fmt.Sprint(err.Code),
+					err.Description,
+					fmt.Sprint(num),
+					strings.Join(sstrings, " "),
+				})
 			}
 		}
 
-		tw.Flush()
+		tw.Render()
 	}
 }
