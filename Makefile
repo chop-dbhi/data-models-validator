@@ -21,13 +21,13 @@ build:
 		-o $(GOPATH)/bin/data-models-validator ./cmd/validator
 
 # Build and tag binaries for each OS and architecture.
-build-all:
+dist:
 	mkdir -p bin
 
-	gox -output="bin/{{.OS}}/data-models-validator" \
-		-ldflags "-X validator.progBuild '$(GIT_SHA)'" \
+	gox -output="dist/data-models-validator-{{.OS}}-{{.Arch}}" \
+		-ldflags "-X validator.progBuild='$(GIT_SHA)'" \
 		-os="linux windows darwin" \
 		-arch="amd64" \
 		./cmd/validator > /dev/null
 
-.PHONY: test
+.PHONY: test build dist

@@ -5,7 +5,7 @@ import "github.com/blang/semver"
 // SemVer components.
 const (
 	progMajor        = 0
-	progMinor        = 9
+	progMinor        = 1
 	progPatch        = 0
 	progReleaseLevel = "beta"
 	progReleaseNum   = 1
