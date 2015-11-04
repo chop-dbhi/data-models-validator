@@ -209,6 +209,7 @@ func main() {
 
 		// Build the result.
 		result := v.Result()
+		var nerrs int
 
 		// Output the error occurrence per field.
 		for _, f := range v.Header {
@@ -217,6 +218,8 @@ func main() {
 			if len(errmap) == 0 {
 				continue
 			}
+
+			nerrs += len(errmap)
 
 			var (
 				sample []*validator.ValidationError
@@ -254,6 +257,11 @@ func main() {
 			}
 		}
 
-		tw.Render()
+		if nerrs > 0 {
+			fmt.Println("* A few issues were found")
+			tw.Render()
+		} else {
+			fmt.Println("* Everything looks good!")
+		}
 	}
 }
