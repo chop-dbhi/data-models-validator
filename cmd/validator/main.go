@@ -92,6 +92,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	inputs := flag.Args()
+
+	if len(inputs) == 0 {
+		fmt.Println("At least one input must be specified.")
+		os.Exit(1)
+	}
+
 	// Initialize data models client for service.
 	c, err := client.New(service)
 
@@ -140,8 +147,6 @@ func main() {
 		tableName string
 		table     *client.Table
 	)
-
-	inputs := flag.Args()
 
 	for _, name := range inputs {
 		// The file name may have a suffix containing the table name, name[:table].
