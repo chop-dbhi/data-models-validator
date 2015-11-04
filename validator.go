@@ -3,6 +3,7 @@ package validator
 import (
 	"encoding/csv"
 	"io"
+	"strings"
 
 	"github.com/chop-dbhi/data-models-service/client"
 )
@@ -108,6 +109,8 @@ func (t *TableValidator) Init() error {
 
 	// Check if all fields in the header are expected.
 	for i, name := range t.Header {
+		name = strings.ToLower(name)
+
 		if f := t.Fields.Get(name); f != nil {
 			valid[name] = i
 			fields[i] = f
