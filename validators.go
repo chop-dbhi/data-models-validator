@@ -1,8 +1,11 @@
 package validator
 
 import (
+	"fmt"
 	"log"
+	"reflect"
 	"strconv"
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -14,9 +17,27 @@ const (
 	DatetimeLayout = "2006-01-02 15:04:05"
 )
 
+func isZeroValue(x interface{}) bool {
+	return x == nil || x == reflect.Zero(reflect.TypeOf(x)).Interface()
+}
+
 type Context map[string]interface{}
 
-type ValidateFunc func(value string, cxt Context) *Error
+func (c Context) String() string {
+	var i int
+	toks := make([]string, len(c))
+
+	for k, v := range c {
+		if !isZeroValue(v) {
+			toks[i] = fmt.Sprintf("%s:%v", k, v)
+			i++
+		}
+	}
+
+	return fmt.Sprintf("(%s)", strings.Join(toks, ", "))
+}
+
+type ValidateFunc func(value string, cxt Context) *ValidationError
 
 type Validator struct {
 	Name          string
@@ -36,7 +57,7 @@ var EncodingValidator = &Validator{
 
 	RequiresValue: true,
 
-	Validate: func(s string, cxt Context) *Error {
+	Validate: func(s string, cxt Context) *ValidationError {
 		if !utf8.ValidString(s) {
 			var bad []rune
 
@@ -50,7 +71,38 @@ var EncodingValidator = &Validator{
 				}
 			}
 
-			return ErrBadEncoding
+			return &ValidationError{
+				Err: ErrBadEncoding,
+				Context: Context{
+					"badRunes": bad,
+				},
+			}
+		}
+
+		return nil
+	},
+}
+
+var EscapedQuotesValidator = &Validator{
+	Name: "EscapedQoutes",
+
+	Description: "Validates any quote characters in a string are escaped.",
+
+	RequiresValue: true,
+
+	Validate: func(s string, cxt Context) *ValidationError {
+		i := strings.Index(s, `"`)
+
+		for i != -1 {
+			if i == len(s)-1 || s[i+1] != '"' {
+				return &ValidationError{
+					Err: ErrBareQuote,
+				}
+			} else {
+				s = s[i+2:]
+			}
+
+			i = strings.Index(s, `"`)
 		}
 
 		return nil
@@ -65,9 +117,11 @@ var IntegerValidator = &Validator{
 
 	RequiresValue: true,
 
-	Validate: func(s string, cxt Context) *Error {
-		if _, err := strconv.ParseInt(s, 10, 64); err != nil {
-			return ErrTypeMismatch
+	Validate: func(s string, cxt Context) *ValidationError {
+		if _, err := strconv.ParseInt(s, 10, 32); err != nil {
+			return &ValidationError{
+				Err: ErrTypeMismatchInt,
+			}
 		}
 
 		return nil
@@ -82,9 +136,11 @@ var NumberValidator = &Validator{
 
 	RequiresValue: true,
 
-	Validate: func(s string, cxt Context) *Error {
-		if _, err := strconv.ParseFloat(s, 64); err != nil {
-			return ErrTypeMismatch
+	Validate: func(s string, cxt Context) *ValidationError {
+		if _, err := strconv.ParseFloat(s, 32); err != nil {
+			return &ValidationError{
+				Err: ErrTypeMismatchNum,
+			}
 		}
 
 		return nil
@@ -99,9 +155,11 @@ var DateValidator = &Validator{
 
 	RequiresValue: true,
 
-	Validate: func(s string, cxt Context) *Error {
+	Validate: func(s string, cxt Context) *ValidationError {
 		if _, err := time.Parse(DateLayout, s); err != nil {
-			return ErrTypeMismatch
+			return &ValidationError{
+				Err: ErrTypeMismatchDate,
+			}
 		}
 
 		return nil
@@ -116,9 +174,11 @@ var DatetimeValidator = &Validator{
 
 	RequiresValue: true,
 
-	Validate: func(s string, cxt Context) *Error {
+	Validate: func(s string, cxt Context) *ValidationError {
 		if _, err := time.Parse(DatetimeLayout, s); err != nil {
-			return ErrTypeMismatch
+			return &ValidationError{
+				Err: ErrTypeMismatchDateTime,
+			}
 		}
 
 		return nil
@@ -132,9 +192,11 @@ var RequiredValidator = &Validator{
 
 	Description: "Validates the input value is not empty.",
 
-	Validate: func(s string, cxt Context) *Error {
+	Validate: func(s string, cxt Context) *ValidationError {
 		if s == "" {
-			return ErrRequiredValue
+			return &ValidationError{
+				Err: ErrRequiredValue,
+			}
 		}
 
 		return nil
@@ -150,11 +212,16 @@ var StringLengthValidator = &Validator{
 
 	RequiresValue: true,
 
-	Validate: func(s string, cxt Context) *Error {
+	Validate: func(s string, cxt Context) *ValidationError {
 		length := cxt["length"].(int)
 
 		if len(s) > length {
-			return ErrLengthExceeded
+			return &ValidationError{
+				Err: ErrLengthExceeded,
+				Context: Context{
+					"maxLength": length,
+				},
+			}
 		}
 
 		return nil
@@ -171,7 +238,7 @@ func (b *BoundValidator) String() string {
 	return b.Validator.String()
 }
 
-func (b *BoundValidator) Validate(s string) *Error {
+func (b *BoundValidator) Validate(s string) *ValidationError {
 	return b.Validator.Validate(s, b.Context)
 }
 
@@ -188,6 +255,7 @@ func BindFieldValidators(f *client.Field) []*BoundValidator {
 	var vs []*BoundValidator
 
 	vs = append(vs, Bind(EncodingValidator, nil))
+	vs = append(vs, Bind(EscapedQuotesValidator, nil))
 
 	if f.Required {
 		vs = append(vs, Bind(RequiredValidator, nil))
@@ -195,17 +263,17 @@ func BindFieldValidators(f *client.Field) []*BoundValidator {
 
 	// Add type-specific validators.
 	switch f.Type {
-	case "string", "clob":
+	case "string", "clob", "text":
 		if f.Length > 0 {
 			vs = append(vs, Bind(StringLengthValidator, Context{"length": f.Length}))
 		}
 	case "integer":
 		vs = append(vs, Bind(IntegerValidator, nil))
-	case "number":
+	case "number", "float", "decimal":
 		vs = append(vs, Bind(NumberValidator, nil))
 	case "date":
 		vs = append(vs, Bind(DateValidator, nil))
-	case "datetime":
+	case "datetime", "timestamp":
 		vs = append(vs, Bind(DatetimeValidator, nil))
 	default:
 		log.Printf("no validator for type '%s'", f.Type)

@@ -41,6 +41,11 @@ var ErrExtraColumns = &Error{
 	Description: "Extra columns were detected in line",
 }
 
+var ErrBareQuote = &Error{
+	Code:        203,
+	Description: `Value contains bare double quotes (")`,
+}
+
 var ErrRequiredValue = &Error{
 	Code:        300,
 	Description: "Value is required",
@@ -49,6 +54,26 @@ var ErrRequiredValue = &Error{
 var ErrTypeMismatch = &Error{
 	Code:        301,
 	Description: "Value is not the correct type",
+}
+
+var ErrTypeMismatchInt = &Error{
+	Code:        305,
+	Description: "Value is not an integer (int32)",
+}
+
+var ErrTypeMismatchNum = &Error{
+	Code:        306,
+	Description: "Value is not a number (float32)",
+}
+
+var ErrTypeMismatchDate = &Error{
+	Code:        307,
+	Description: "Value is not a date (YYYY-MM-DD)",
+}
+
+var ErrTypeMismatchDateTime = &Error{
+	Code:        308,
+	Description: "Value is not a datetime (YYYY-MM-DD HH:MM:SS)",
 }
 
 var ErrLengthExceeded = &Error{
@@ -72,18 +97,22 @@ var Errors = map[int]*Error{
 
 	201: ErrBadHeader,
 	202: ErrExtraColumns,
+	203: ErrBareQuote,
 
 	300: ErrRequiredValue,
 	301: ErrTypeMismatch,
 	302: ErrLengthExceeded,
 	303: ErrPrecisionExceeded,
 	304: ErrScaleExceeded,
+	305: ErrTypeMismatchInt,
+	306: ErrTypeMismatchNum,
+	307: ErrTypeMismatchDate,
+	308: ErrTypeMismatchDateTime,
 }
 
 // ValidationError is composed of an error with an optional line and
 // and field the error is specific to. Additional context can be supplied
-// in the context field, however it is not currently included in the error
-// message.
+// in the context field.
 type ValidationError struct {
 	Err     *Error
 	Line    int
@@ -93,11 +122,19 @@ type ValidationError struct {
 }
 
 func (e ValidationError) Error() string {
+	var location string
+
 	if e.Field == "" {
-		return fmt.Sprintf("line %d: %s", e.Line, e.Err)
+		location = fmt.Sprintf("line %d", e.Line)
+	} else {
+		location = fmt.Sprintf("line %d, field %s", e.Line, e.Field)
 	}
 
-	return fmt.Sprintf("line %d, field %s: %s", e.Line, e.Field, e.Err)
+	if e.Context != nil {
+		return fmt.Sprintf("%s: %s: %s", location, e.Err, e.Context)
+	}
+
+	return fmt.Sprintf("%s: %s", location, e.Err)
 }
 
 // Result maintains the validation results currently consisting of

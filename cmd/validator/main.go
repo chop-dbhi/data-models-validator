@@ -33,10 +33,11 @@ and optionally compressed using gzip or bzip2.
 
 One or more existing input files can be explicitly passed otherwise STDIN
 will be read. Each input can be optionally annotated with an explicit table name
-to be validated against. If not specified, the header will be used to detect
-which table the file corresponds to. The only time an explicit table should need
-to be used is if two tables have the same set of fields making the detection
-ambiguous.
+to be validated against. If not specified, the file name will be used to
+determine which table the file corresponds to.
+
+The validator returns an exit status of 0 if no errors are found and nonzero
+otherwise.
 
 Source: https://github.com/chop-dbhi/data-models-validator
 
@@ -204,7 +205,7 @@ func main() {
 			"code",
 			"error",
 			"occurrences",
-			"sample",
+			"samples",
 		})
 
 		// Build the result.
@@ -244,7 +245,11 @@ func main() {
 				sstrings := make([]string, len(sample))
 
 				for i, ve := range sample {
-					sstrings[i] = fmt.Sprintf("%d:'%v'", ve.Line, ve.Value)
+					if ve.Context != nil {
+						sstrings[i] = fmt.Sprintf("%d:'%v':%v", ve.Line, ve.Value, ve.Context)
+					} else {
+						sstrings[i] = fmt.Sprintf("%d:'%v'", ve.Line, ve.Value)
+					}
 				}
 
 				tw.Append([]string{
@@ -252,7 +257,7 @@ func main() {
 					fmt.Sprint(err.Code),
 					err.Description,
 					fmt.Sprint(num),
-					strings.Join(sstrings, " "),
+					strings.Join(sstrings, "\n"),
 				})
 			}
 		}
@@ -260,8 +265,9 @@ func main() {
 		if nerrs > 0 {
 			fmt.Println("* A few issues were found")
 			tw.Render()
-		} else {
-			fmt.Println("* Everything looks good!")
+			os.Exit(1)
 		}
+
+		fmt.Println("* Everything looks good!")
 	}
 }
