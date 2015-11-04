@@ -125,18 +125,23 @@ func main() {
 	if version == "" {
 		model = revisions.Latest()
 	} else {
-		var versions []string
 
-		for _, model = range revisions.List() {
-			if model.Version == version {
+		var (
+			versions []string
+			_model   *client.Model
+		)
+
+		for _, _model = range revisions.List() {
+			if _model.Version == version {
+				model = _model
 				break
 			}
 
-			versions = append(versions, model.Version)
+			versions = append(versions, _model.Version)
 		}
 
 		if model == nil {
-			fmt.Printf("model %s has versions: %s\n", model, strings.Join(versions, ", "))
+			fmt.Printf("Invalid version for '%s'. Choose from: %s\n", modelName, strings.Join(versions, ", "))
 			os.Exit(1)
 		}
 	}
