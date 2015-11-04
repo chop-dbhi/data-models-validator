@@ -22,7 +22,7 @@ build:
 
 # Build and tag binaries for each OS and architecture.
 dist:
-	mkdir -p bin
+	mkdir -p dist
 
 	gox -output="dist/data-models-validator-{{.OS}}-{{.Arch}}" \
 		-ldflags "-X validator.progBuild='$(GIT_SHA)'" \
