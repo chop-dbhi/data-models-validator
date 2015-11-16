@@ -6,14 +6,15 @@ install:
 
 test-install: install
 	go get golang.org/x/tools/cmd/cover
-	go get github.com/cespare/prettybench
+
+build-install:
 	go get github.com/mitchellh/gox
 
 test:
 	go test -cover ./...
 
 bench:
-	go test -run=none -bench=. ./... | prettybench
+	go test -run=none -bench=. ./...
 
 build:
 	go build \
