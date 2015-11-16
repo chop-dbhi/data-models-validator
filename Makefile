@@ -3,6 +3,7 @@ GIT_SHA := $(shell git log -1 --pretty=format:"%h")
 install:
 	go get github.com/blang/semver
 	go get github.com/chop-dbhi/data-models-service/client
+	go get github.com/olekukonko/tablewriter
 
 test-install: install
 	go get golang.org/x/tools/cmd/cover
