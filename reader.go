@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"bytes"
 	"compress/bzip2"
 	"compress/gzip"
 	"fmt"
@@ -8,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 )
+
+var bom = []byte{0xef, 0xbb, 0xbf}
 
 func detectCompression(name string) string {
 	switch filepath.Ext(name) {
@@ -28,6 +31,12 @@ type UniversalReader struct {
 
 func (r *UniversalReader) Read(buf []byte) (int, error) {
 	n, err := r.r.Read(buf)
+
+	// Detect and remove BOM.
+	if bytes.HasPrefix(buf, bom) {
+		copy(buf, buf[len(bom):])
+		n -= len(bom)
+	}
 
 	// Replace carriage returns with newlines
 	for i, b := range buf {
