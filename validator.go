@@ -33,11 +33,11 @@ type TableValidator struct {
 
 func (t *TableValidator) validateRow(row []string) error {
 	var (
-		i   int
-		err *Error
-		v   string
-		bv  *BoundValidator
-		f   *client.Field
+		i    int
+		verr *ValidationError
+		v    string
+		bv   *BoundValidator
+		f    *client.Field
 	)
 
 	if len(row) != t.length {
@@ -61,12 +61,13 @@ func (t *TableValidator) validateRow(row []string) error {
 				continue
 			}
 
-			if err = bv.Validate(v); err != nil {
+			if verr = bv.Validate(v); verr != nil {
 				t.result.LogError(&ValidationError{
-					Err:   err,
-					Line:  t.line,
-					Field: f.Name,
-					Value: v,
+					Err:     verr.Err,
+					Line:    t.line,
+					Field:   f.Name,
+					Value:   v,
+					Context: verr.Context,
 				})
 
 				t.errs++
@@ -82,8 +83,10 @@ func (t *TableValidator) validateRow(row []string) error {
 // a set of validators for each field.
 func (t *TableValidator) Init() error {
 	var (
-		err  error
-		head []string
+		err       error
+		head      []string
+		lengthErr bool
+		matchErr  bool
 	)
 
 	if head, err = t.csv.Read(); err != nil {
@@ -91,31 +94,26 @@ func (t *TableValidator) Init() error {
 	}
 
 	if len(head) != t.length {
-		return &ValidationError{
-			Err: ErrExtraColumns,
-			Context: Context{
-				"expected": t.length,
-				"actual":   len(head),
-			},
-		}
+		lengthErr = true
 	}
 
 	t.Header = head
+	for i, s := range t.Header {
+		t.Header[i] = strings.ToLower(s)
+	}
 
 	valid := make(map[string]int)
 	fields := make(map[int]*client.Field)
-	extra := make(map[string]int)
+	unknown := make([]string, 0)
 	missing := make([]string, 0)
 
 	// Check if all fields in the header are expected.
 	for i, name := range t.Header {
-		name = strings.ToLower(name)
-
 		if f := t.Fields.Get(name); f != nil {
 			valid[name] = i
 			fields[i] = f
 		} else {
-			extra[name] = i
+			unknown = append(unknown, name)
 		}
 	}
 
@@ -129,12 +127,18 @@ func (t *TableValidator) Init() error {
 	// Set of fields by position mapped to schema.
 	t.fields = fields
 
-	if len(extra) > 0 || len(missing) > 0 {
+	if len(unknown) > 0 || len(missing) > 0 {
+		matchErr = true
+	}
+
+	if lengthErr || matchErr {
 		return &ValidationError{
-			Err: ErrExtraColumns,
+			Err: ErrBadHeader,
 			Context: Context{
-				"extra":   extra,
-				"missing": missing,
+				"expectedLength": t.length,
+				"actualLength":   len(head),
+				"unknownFields":  unknown,
+				"missingFields":  missing,
 			},
 		}
 	}

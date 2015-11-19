@@ -4,11 +4,10 @@ import "github.com/blang/semver"
 
 // SemVer components.
 const (
-	progMajor        = 0
-	progMinor        = 1
+	progMajor        = 1
+	progMinor        = 0
 	progPatch        = 0
 	progReleaseLevel = "beta"
-	progReleaseNum   = 1
 )
 
 var (
@@ -24,9 +23,6 @@ var (
 		Patch: progPatch,
 		Pre: []semver.PRVersion{{
 			VersionStr: progReleaseLevel,
-		}, {
-			VersionNum: progReleaseNum,
-			IsNum:      true,
 		}},
 	}
 )
