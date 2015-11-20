@@ -33,9 +33,9 @@ dist-build:
 		./cmd/validator > /dev/null
 
 dist-zip:
-	cd dist && zip linux-amd64.zip linux-amd64/*
-	cd dist && zip windows-amd64.zip windows-amd64/*
-	cd dist && zip darwin-amd64.zip darwin-amd64/*
+	cd dist && zip data-models-validator-linux-amd64.zip linux-amd64/*
+	cd dist && zip data-models-validator-windows-amd64.zip windows-amd64/*
+	cd dist && zip data-models-validator-darwin-amd64.zip darwin-amd64/*
 
 dist: dist-build dist-zip
 
