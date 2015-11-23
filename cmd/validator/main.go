@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"strings"
 	"text/template"
 
@@ -165,7 +166,7 @@ func main() {
 		} else {
 			name = toks[0]
 
-			toks = strings.SplitN(name, ".", 2)
+			toks = strings.SplitN(filepath.Base(name), ".", 2)
 			tableName = toks[0]
 		}
 
