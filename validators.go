@@ -17,8 +17,22 @@ const (
 	DatetimeLayout = "2006-01-02 15:04:05"
 )
 
-func isZeroValue(x interface{}) bool {
-	return x == nil || x == reflect.Zero(reflect.TypeOf(x)).Interface()
+// isZeroValue returns true if the value is equal to the type's respective
+// zero value or is empty in the case of a slice, map, or array.
+func isZeroValue(v interface{}) bool {
+	if v == nil {
+		return true
+	}
+
+	t := reflect.TypeOf(v)
+
+	switch t.Kind() {
+	case reflect.Array, reflect.Map, reflect.Slice:
+		return reflect.ValueOf(v).Len() == 0
+
+	default:
+		return v == reflect.Zero(t).Interface()
+	}
 }
 
 type Context map[string]interface{}
