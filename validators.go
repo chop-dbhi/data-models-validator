@@ -269,7 +269,7 @@ func BindFieldValidators(f *client.Field) []*BoundValidator {
 	var vs []*BoundValidator
 
 	vs = append(vs, Bind(EncodingValidator, nil))
-	vs = append(vs, Bind(EscapedQuotesValidator, nil))
+    // vs = append(vs, Bind(EscapedQuotesValidator, nil))
 
 	if f.Required {
 		vs = append(vs, Bind(RequiredValidator, nil))
