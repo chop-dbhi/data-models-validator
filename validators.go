@@ -43,12 +43,12 @@ func (c Context) String() string {
 
 	for k, v := range c {
 		if !isZeroValue(v) {
-			toks[i] = fmt.Sprintf("%s:%v", k, v)
+			toks[i] = fmt.Sprintf("%s = %v", k, v)
 			i++
 		}
 	}
 
-	return fmt.Sprintf("(%s)", strings.Join(toks, ", "))
+	return fmt.Sprintf("{%s}", strings.Join(toks, ", "))
 }
 
 type ValidateFunc func(value string, cxt Context) *ValidationError

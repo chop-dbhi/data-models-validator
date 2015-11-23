@@ -247,9 +247,9 @@ func main() {
 
 				for i, ve := range sample {
 					if ve.Context != nil {
-						sstrings[i] = fmt.Sprintf("%d:'%v':%v", ve.Line, ve.Value, ve.Context)
+						sstrings[i] = fmt.Sprintf("line %d: `%s`\n%s", ve.Line, ve.Value, ve.Context)
 					} else {
-						sstrings[i] = fmt.Sprintf("%d:'%v'", ve.Line, ve.Value)
+						sstrings[i] = fmt.Sprintf("line %d: `%s`", ve.Line, ve.Value)
 					}
 				}
 

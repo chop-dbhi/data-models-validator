@@ -131,7 +131,7 @@ func (e ValidationError) Error() string {
 	}
 
 	if e.Context != nil {
-		return fmt.Sprintf("%s: %s: %s", location, e.Err, e.Context)
+		return fmt.Sprintf("%s: %s\n%s", location, e.Err, e.Context)
 	}
 
 	return fmt.Sprintf("%s: %s", location, e.Err)
