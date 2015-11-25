@@ -1,6 +1,8 @@
 package validator
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/csv"
 	"io"
 	"strings"
@@ -24,8 +26,7 @@ type TableValidator struct {
 	errs   int
 	length int
 	reader io.Reader
-	csv    *csv.Reader
-	line   int
+	csv    *greedyCSVReader
 
 	// Mapped field index to field.
 	fields map[int]*client.Field
@@ -40,15 +41,19 @@ func (t *TableValidator) validateRow(row []string) error {
 		f    *client.Field
 	)
 
+	// Line level error, individual fields are not inspected since they
+	// may be shifted relative to the header.
 	if len(row) != t.length {
-		return &ValidationError{
-			Line: t.line,
+		t.result.LogError(&ValidationError{
+			Line: t.csv.line,
 			Err:  ErrExtraColumns,
 			Context: Context{
 				"expected": t.length,
 				"actual":   len(row),
 			},
-		}
+		})
+
+		return nil
 	}
 
 	// Validate each value mapped to the respective field in the line.
@@ -64,7 +69,7 @@ func (t *TableValidator) validateRow(row []string) error {
 			if verr = bv.Validate(v); verr != nil {
 				t.result.LogError(&ValidationError{
 					Err:     verr.Err,
-					Line:    t.line,
+					Line:    t.csv.line,
 					Field:   f.Name,
 					Value:   v,
 					Context: verr.Context,
@@ -158,15 +163,21 @@ func (t *TableValidator) Next() error {
 	row, err := t.csv.Read()
 
 	if err != nil {
+		// Log and ignore.
+		if verr, ok := err.(*ValidationError); ok {
+			t.result.LogError(verr)
+			return nil
+		}
+
+		// EOF or unexpected error.
 		return err
 	}
-
-	t.line++
 
 	return t.validateRow(row)
 }
 
-// Run executes all of the validators for the input.
+// Run executes all of the validators for the input. All parse and validation
+// errors are handled so the only error that should stop the validator is EOF.
 func (t *TableValidator) Run() error {
 	var err error
 
@@ -189,11 +200,7 @@ func (t *TableValidator) Result() *Result {
 }
 
 func New(reader io.Reader, table *client.Table) *TableValidator {
-	cr := csv.NewReader(reader)
-
-	cr.Comment = '#'
-	cr.LazyQuotes = true
-	cr.TrimLeadingSpace = true
+	cr := newGreedyCSVReader(reader)
 
 	return &TableValidator{
 		Fields: table.Fields,
@@ -203,4 +210,90 @@ func New(reader io.Reader, table *client.Table) *TableValidator {
 		csv:    cr,
 		result: NewResult(),
 	}
+}
+
+// greedyCSVReader attempts to read and parse all lines in a CSV file
+// regardless if there are errors.
+type greedyCSVReader struct {
+	buf  *bytes.Buffer
+	sc   *bufio.Scanner
+	line int
+}
+
+// Read scans the line, writes to the buffer, and then reads as CSV.
+// The error returned will contain the line
+func (r *greedyCSVReader) Read() ([]string, error) {
+	r.line++
+
+	// Exit if the scanner is done, either an error or EOF.
+	if !r.sc.Scan() {
+		err := r.sc.Err()
+
+		if err == nil {
+			err = io.EOF
+		}
+
+		return nil, err
+	}
+
+	// Read the line as bytes, the newline is intact.
+	line := r.sc.Bytes()
+
+	// Error is always nil, per the docs.
+	// http://golang.org/pkg/bytes/index.html#Buffer.Write
+	r.buf.Write(line)
+
+	// Attempt to read buffered line as CSV data.
+	row, err := parseCSVLine(r.buf)
+
+	// Problem parsing as CSV.
+	// EOF would have been caught by the scanner.
+	if err != nil {
+		// Special handling for CSV parse errors.
+		if perr, ok := err.(*csv.ParseError); ok {
+			switch perr.Err {
+			case csv.ErrTrailingComma, csv.ErrFieldCount:
+				// Ignore
+				err = nil
+
+			case csv.ErrBareQuote, csv.ErrQuote:
+				err = &ValidationError{
+					Err:   ErrBareQuote,
+					Line:  r.line,
+					Value: string(line),
+					Context: Context{
+						"column": perr.Column,
+					},
+				}
+			}
+		}
+	}
+
+	// Clear the buffer for the next line.
+	r.buf.Reset()
+
+	// Return intended error.
+	if err != nil {
+		return nil, err
+	}
+
+	return row, nil
+}
+
+func newGreedyCSVReader(r io.Reader) *greedyCSVReader {
+	sc := bufio.NewScanner(r)
+
+	buf := bytes.NewBuffer(nil)
+
+	return &greedyCSVReader{
+		sc:  sc,
+		buf: buf,
+	}
+}
+
+func parseCSVLine(r io.Reader) ([]string, error) {
+	cr := csv.NewReader(r)
+	cr.Comment = '#'
+	cr.TrimLeadingSpace = true
+	return cr.Read()
 }

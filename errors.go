@@ -140,35 +140,42 @@ func (e ValidationError) Error() string {
 // Result maintains the validation results currently consisting of
 // validation errors.
 type Result struct {
-	Errors []*ValidationError
+	lineErrors map[*Error][]*ValidationError
 
-	// Index by field, grouped error code.
-	fieldIndex map[string]map[*Error][]*ValidationError
+	// field, grouped error code.
+	fieldErrors map[string]map[*Error][]*ValidationError
 }
 
 // LogError logs an error to the result.
 func (r *Result) LogError(verr *ValidationError) {
-	r.Errors = append(r.Errors, verr)
-
-	if verr.Field != "" {
-		errs, ok := r.fieldIndex[verr.Field]
+	if verr.Field == "" {
+		errs := r.lineErrors[verr.Err]
+		r.lineErrors[verr.Err] = append(errs, verr)
+	} else {
+		errs, ok := r.fieldErrors[verr.Field]
 
 		if !ok {
 			errs = make(map[*Error][]*ValidationError)
-			r.fieldIndex[verr.Field] = errs
+			r.fieldErrors[verr.Field] = errs
 		}
 
 		errs[verr.Err] = append(errs[verr.Err], verr)
 	}
 }
 
+// LineErrors returns the line errors.
+func (r *Result) LineErrors() map[*Error][]*ValidationError {
+	return r.lineErrors
+}
+
 // FieldErrors returns errors for field grouped by error code.
 func (r *Result) FieldErrors(f string) map[*Error][]*ValidationError {
-	return r.fieldIndex[f]
+	return r.fieldErrors[f]
 }
 
 func NewResult() *Result {
 	return &Result{
-		fieldIndex: make(map[string]map[*Error][]*ValidationError),
+		lineErrors:  make(map[*Error][]*ValidationError),
+		fieldErrors: make(map[string]map[*Error][]*ValidationError),
 	}
 }

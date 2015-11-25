@@ -70,6 +70,8 @@ func init() {
 	}
 }
 
+const sampleSize = 5
+
 func main() {
 	var (
 		service   string
@@ -199,6 +201,53 @@ func main() {
 
 		reader.Close()
 
+		var hasErrors bool
+
+		// Build the result.
+		result := v.Result()
+
+		lerrs := result.LineErrors()
+
+		if len(lerrs) > 0 {
+			hasErrors = true
+
+			fmt.Println("* Row-level issues were found.")
+
+			// Row level issues.
+			tw := tablewriter.NewWriter(os.Stdout)
+
+			tw.SetHeader([]string{
+				"code",
+				"error",
+				"occurrences",
+				"lines",
+				"example",
+			})
+
+			var example string
+
+			for err, verrs := range result.LineErrors() {
+				ve := verrs[0]
+
+				if ve.Context != nil {
+					example = fmt.Sprintf("line %d: `%v` %v", ve.Line, ve.Value, ve.Context)
+				} else {
+					example = fmt.Sprintf("line %d: `%v`", ve.Line, ve.Value)
+				}
+
+				tw.Append([]string{
+					fmt.Sprint(err.Code),
+					err.Description,
+					fmt.Sprint(len(verrs)),
+					strings.Join(errLineSteps(verrs), ", "),
+					example,
+				})
+			}
+
+			tw.Render()
+		}
+
+		// Field level issues.
 		tw := tablewriter.NewWriter(os.Stdout)
 
 		tw.SetHeader([]string{
@@ -206,11 +255,10 @@ func main() {
 			"code",
 			"error",
 			"occurrences",
+			"lines",
 			"samples",
 		})
 
-		// Build the result.
-		result := v.Result()
 		var nerrs int
 
 		// Output the error occurrence per field.
@@ -223,16 +271,13 @@ func main() {
 
 			nerrs += len(errmap)
 
-			var (
-				sample []*validator.ValidationError
-				ssize  = 5
-			)
+			var sample []*validator.ValidationError
 
 			for err, verrs := range errmap {
 				num := len(verrs)
 
-				if num >= ssize {
-					sample = make([]*validator.ValidationError, ssize)
+				if num >= sampleSize {
+					sample = make([]*validator.ValidationError, sampleSize)
 
 					// Randomly sample.
 					for i, _ := range sample {
@@ -247,7 +292,7 @@ func main() {
 
 				for i, ve := range sample {
 					if ve.Context != nil {
-						sstrings[i] = fmt.Sprintf("line %d: `%s`\n%s", ve.Line, ve.Value, ve.Context)
+						sstrings[i] = fmt.Sprintf("line %d: `%s` %s", ve.Line, ve.Value, ve.Context)
 					} else {
 						sstrings[i] = fmt.Sprintf("line %d: `%s`", ve.Line, ve.Value)
 					}
@@ -258,17 +303,62 @@ func main() {
 					fmt.Sprint(err.Code),
 					err.Description,
 					fmt.Sprint(num),
+					strings.Join(errLineSteps(verrs), ", "),
 					strings.Join(sstrings, "\n"),
 				})
 			}
 		}
 
 		if nerrs > 0 {
-			fmt.Println("* A few issues were found")
+			hasErrors = true
+			fmt.Println("* Field-level issues were found.")
 			tw.Render()
+		}
+
+		if hasErrors {
 			os.Exit(1)
 		}
 
 		fmt.Println("* Everything looks good!")
 	}
+}
+
+// Returns a slice of line ranges that errors have occurred on.
+func errLineSteps(errs []*validator.ValidationError) []string {
+	var (
+		start, end int
+		steps      []string
+	)
+
+	for _, err := range errs {
+		if start == 0 {
+			start = err.Line
+			end = start
+			continue
+		}
+
+		if err.Line == start+1 {
+			end = err.Line
+			continue
+		}
+
+		// Skipped a line, log the step
+		if start == end {
+			steps = append(steps, fmt.Sprint(start))
+		} else {
+			steps = append(steps, fmt.Sprintf("%d-%d", start, end))
+		}
+
+		start = err.Line
+		end = err.Line
+	}
+
+	// Skipped a line, log the step
+	if start == end {
+		steps = append(steps, fmt.Sprint(start))
+	} else {
+		steps = append(steps, fmt.Sprintf("%d-%d", start, end))
+	}
+
+	return steps
 }
