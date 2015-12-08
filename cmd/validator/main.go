@@ -153,6 +153,7 @@ func main() {
 	fmt.Printf("Validating against model '%s/%s'\n", model.Name, model.Version)
 
 	var (
+		hasErrors bool
 		tableName string
 		table     *client.Table
 	)
@@ -200,8 +201,6 @@ func main() {
 		}
 
 		reader.Close()
-
-		var hasErrors bool
 
 		// Build the result.
 		result := v.Result()
@@ -313,13 +312,13 @@ func main() {
 			hasErrors = true
 			fmt.Println("* Field-level issues were found.")
 			tw.Render()
+		} else if len(lerrs) == 0 {
+			fmt.Println("* Everything looks good!")
 		}
+	}
 
-		if hasErrors {
-			os.Exit(1)
-		}
-
-		fmt.Println("* Everything looks good!")
+	if hasErrors {
+		os.Exit(1)
 	}
 }
 
