@@ -15,7 +15,7 @@ func TestUniversalReader(t *testing.T) {
 	n, err := ur.Read(buf)
 
 	if err != nil {
-		t.Fatalf("problem reading:", err)
+		t.Fatalf("problem reading: %s", err)
 	}
 
 	if cap(buf) != 20 {
