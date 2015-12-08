@@ -223,7 +223,7 @@ func main() {
 				"example",
 			})
 
-			var example string
+			var lines, example string
 
 			for err, verrs := range result.LineErrors() {
 				ve := verrs[0]
@@ -234,11 +234,19 @@ func main() {
 					example = fmt.Sprintf("line %d: `%v`", ve.Line, ve.Value)
 				}
 
+				errsteps := errLineSteps(verrs)
+
+				if len(errsteps) > 10 {
+					lines = fmt.Sprintf("%s ... (%d more)", strings.Join(errsteps[:10], ", "), len(errsteps[10:]))
+				} else {
+					lines = strings.Join(errsteps, ", ")
+				}
+
 				tw.Append([]string{
 					fmt.Sprint(err.Code),
 					err.Description,
 					fmt.Sprint(len(verrs)),
-					strings.Join(errLineSteps(verrs), ", "),
+					lines,
 					example,
 				})
 			}
@@ -270,7 +278,10 @@ func main() {
 
 			nerrs += len(errmap)
 
-			var sample []*validator.ValidationError
+			var (
+				lines  string
+				sample []*validator.ValidationError
+			)
 
 			for err, verrs := range errmap {
 				num := len(verrs)
@@ -297,12 +308,20 @@ func main() {
 					}
 				}
 
+				errsteps := errLineSteps(verrs)
+
+				if len(errsteps) > 10 {
+					lines = fmt.Sprintf("%s ... (%d more)", strings.Join(errsteps[:10], ", "), len(errsteps[10:]))
+				} else {
+					lines = strings.Join(errsteps, ", ")
+				}
+
 				tw.Append([]string{
 					f,
 					fmt.Sprint(err.Code),
 					err.Description,
 					fmt.Sprint(num),
-					strings.Join(errLineSteps(verrs), ", "),
+					lines,
 					strings.Join(sstrings, "\n"),
 				})
 			}
