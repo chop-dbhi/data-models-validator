@@ -1,15 +1,6 @@
 package validator
 
-import (
-	"errors"
-	"fmt"
-)
-
-// ErrTooManyErrors is returned when the maximum errors have been reached
-// during validation. This is done to prevent overloading the output with
-// so many errors that it makes it difficult to understand, iterate, and fix
-// the first set of the problems.
-var ErrTooManyErrors = errors.New("too many errors")
+import "fmt"
 
 // Error defines a specific type of error denoted by the description. A code is
 // defined as a shorthand for the error and to act as a lookup for the error itself.

@@ -3,7 +3,7 @@ package validator
 import (
 	"bufio"
 	"bytes"
-	"encoding/csv"
+	"fmt"
 	"io"
 	"strings"
 
@@ -199,8 +199,9 @@ func (t *TableValidator) Result() *Result {
 	return t.result
 }
 
+// New takes an io.Reader and validates it against a data model table.
 func New(reader io.Reader, table *client.Table) *TableValidator {
-	cr := newGreedyCSVReader(reader)
+	cr := newGreedyCSVReader(reader, table.Fields.Len())
 
 	return &TableValidator{
 		Fields: table.Fields,
@@ -215,9 +216,10 @@ func New(reader io.Reader, table *client.Table) *TableValidator {
 // greedyCSVReader attempts to read and parse all lines in a CSV file
 // regardless if there are errors.
 type greedyCSVReader struct {
-	buf  *bytes.Buffer
-	sc   *bufio.Scanner
-	line int
+	buf    *bytes.Buffer
+	sc     *bufio.Scanner
+	line   int
+	record []string
 }
 
 // Read scans the line, writes to the buffer, and then reads as CSV.
@@ -244,28 +246,18 @@ func (r *greedyCSVReader) Read() ([]string, error) {
 	r.buf.Write(line)
 
 	// Attempt to read buffered line as CSV data.
-	row, err := parseCSVLine(r.buf)
+	col, err := parseCSVLine(r.buf, r.record)
 
 	// Problem parsing as CSV.
 	// EOF would have been caught by the scanner.
 	if err != nil {
-		// Special handling for CSV parse errors.
-		if perr, ok := err.(*csv.ParseError); ok {
-			switch perr.Err {
-			case csv.ErrTrailingComma, csv.ErrFieldCount:
-				// Ignore
-				err = nil
-
-			case csv.ErrBareQuote, csv.ErrQuote:
-				err = &ValidationError{
-					Err:   ErrBareQuote,
-					Line:  r.line,
-					Value: string(line),
-					Context: Context{
-						"column": perr.Column,
-					},
-				}
-			}
+		err = &ValidationError{
+			Err:   ErrBareQuote,
+			Line:  r.line,
+			Value: string(line),
+			Context: Context{
+				"column": col,
+			},
 		}
 	}
 
@@ -277,23 +269,39 @@ func (r *greedyCSVReader) Read() ([]string, error) {
 		return nil, err
 	}
 
-	return row, nil
+	return r.record, nil
 }
 
-func newGreedyCSVReader(r io.Reader) *greedyCSVReader {
+func newGreedyCSVReader(r io.Reader, size int) *greedyCSVReader {
 	sc := bufio.NewScanner(r)
 
 	buf := bytes.NewBuffer(nil)
 
 	return &greedyCSVReader{
-		sc:  sc,
-		buf: buf,
+		sc:     sc,
+		buf:    buf,
+		record: make([]string, size),
 	}
 }
 
-func parseCSVLine(r io.Reader) ([]string, error) {
-	cr := csv.NewReader(r)
+func parseCSVLine(r io.Reader, t []string) (int, error) {
+	cr := DefaultCSVReader(r)
 	cr.Comment = '#'
-	cr.TrimLeadingSpace = true
-	return cr.Read()
+	i := 0
+	m := len(t)
+
+	for cr.Scan() {
+		if i == m {
+			return cr.Column(), fmt.Errorf("too many columns. expected %d", m)
+		}
+
+		t[i] = cr.Text()
+		i++
+
+		if cr.EndOfRecord() {
+			break
+		}
+	}
+
+	return cr.Column(), cr.Err()
 }
