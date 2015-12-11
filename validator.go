@@ -1,9 +1,6 @@
 package validator
 
 import (
-	"bufio"
-	"bytes"
-	"fmt"
 	"io"
 	"strings"
 
@@ -211,97 +208,4 @@ func New(reader io.Reader, table *client.Table) *TableValidator {
 		csv:    cr,
 		result: NewResult(),
 	}
-}
-
-// greedyCSVReader attempts to read and parse all lines in a CSV file
-// regardless if there are errors.
-type greedyCSVReader struct {
-	buf    *bytes.Buffer
-	sc     *bufio.Scanner
-	line   int
-	record []string
-}
-
-// Read scans the line, writes to the buffer, and then reads as CSV.
-// The error returned will contain the line
-func (r *greedyCSVReader) Read() ([]string, error) {
-	r.line++
-
-	// Exit if the scanner is done, either an error or EOF.
-	if !r.sc.Scan() {
-		err := r.sc.Err()
-
-		if err == nil {
-			err = io.EOF
-		}
-
-		return nil, err
-	}
-
-	// Read the line as bytes, the newline is intact.
-	line := r.sc.Bytes()
-
-	// Error is always nil, per the docs.
-	// http://golang.org/pkg/bytes/index.html#Buffer.Write
-	r.buf.Write(line)
-
-	// Attempt to read buffered line as CSV data.
-	col, err := parseCSVLine(r.buf, r.record)
-
-	// Problem parsing as CSV.
-	// EOF would have been caught by the scanner.
-	if err != nil {
-		err = &ValidationError{
-			Err:   ErrBareQuote,
-			Line:  r.line,
-			Value: string(line),
-			Context: Context{
-				"column": col,
-			},
-		}
-	}
-
-	// Clear the buffer for the next line.
-	r.buf.Reset()
-
-	// Return intended error.
-	if err != nil {
-		return nil, err
-	}
-
-	return r.record, nil
-}
-
-func newGreedyCSVReader(r io.Reader, size int) *greedyCSVReader {
-	sc := bufio.NewScanner(r)
-
-	buf := bytes.NewBuffer(nil)
-
-	return &greedyCSVReader{
-		sc:     sc,
-		buf:    buf,
-		record: make([]string, size),
-	}
-}
-
-func parseCSVLine(r io.Reader, t []string) (int, error) {
-	cr := DefaultCSVReader(r)
-	cr.Comment = '#'
-	i := 0
-	m := len(t)
-
-	for cr.Scan() {
-		if i == m {
-			return cr.Column(), fmt.Errorf("too many columns. expected %d", m)
-		}
-
-		t[i] = cr.Text()
-		i++
-
-		if cr.EndOfRecord() {
-			break
-		}
-	}
-
-	return cr.Column(), cr.Err()
 }

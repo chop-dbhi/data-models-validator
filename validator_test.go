@@ -2,7 +2,6 @@ package validator
 
 import (
 	"bytes"
-	"io"
 	"testing"
 
 	"github.com/chop-dbhi/data-models-service/client"
@@ -20,75 +19,6 @@ func init() {
 	c, _ := client.New("http://data-models.origins.link")
 	model, _ := c.ModelRevision("i2b2_pedsnet", "2.0.0")
 	table = model.Tables.Get("i2b2")
-}
-
-type streamReader struct {
-	Size uint
-
-	header []byte
-	line   []byte
-
-	readHead    bool
-	lineCounter uint
-}
-
-func (r *streamReader) Read(b []byte) (int, error) {
-	// Return header
-	if !r.readHead {
-		r.readHead = true
-		return copy(b, r.header), nil
-	}
-
-	// Exit once the size has been reached.
-	if r.lineCounter == r.Size {
-		return 0, io.EOF
-	}
-
-	r.lineCounter++
-	n := copy(b, r.line)
-
-	return n, nil
-}
-
-func newStreamReader(size uint) *streamReader {
-	return &streamReader{
-		Size:   size,
-		header: []byte(header),
-		line:   []byte(line),
-	}
-}
-
-func TestParseCSVLine(t *testing.T) {
-	r := bytes.NewBuffer([]byte(line))
-	record := make([]string, 25)
-
-	col, err := parseCSVLine(r, record)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if col != 25 {
-		t.Errorf("expected column 25, got %d", col)
-	}
-
-	if record[24] != "SMOKING" {
-		t.Errorf("expected last element to be `SMOKING`, got `%s`", record[24])
-	}
-}
-
-func BenchmarkParseCSVLine(b *testing.B) {
-	buf := []byte(line)
-	r := bytes.NewBuffer(buf)
-	rec := [25]string{}
-
-	for i := 0; i < b.N; i++ {
-		b.StartTimer()
-		parseCSVLine(r, rec[:0])
-
-		b.StopTimer()
-		r = bytes.NewBuffer(buf)
-	}
 }
 
 func BenchmarkValidateRow(b *testing.B) {

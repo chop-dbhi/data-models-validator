@@ -3,6 +3,7 @@ package validator
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 )
@@ -14,7 +15,6 @@ import (
 type CSVReader struct {
 	*bufio.Scanner
 	sep    byte // values separator
-	quoted bool // specify if values may be quoted (when they contain separator or newline)
 	eor    bool // true when the most recent field has been terminated by a newline (not a separator).
 	lineno int  // current line number (not record number)
 	column int  // current column index 1-based
@@ -22,15 +22,14 @@ type CSVReader struct {
 	Comment byte // character marking the start of a line comment. When specified (not 0), line comment appears as empty line.
 }
 
-// DefaultReader creates a "standard" CSV reader (separator is comma and quoted mode active)
+// DefaultReader creates a "standard" CSV reader.
 func DefaultCSVReader(rd io.Reader) *CSVReader {
-	return NewCSVReader(rd, ',', true)
+	return NewCSVReader(rd, ',')
 }
 
-// NewReader returns a new CSV scanner to read from r.
-// When quoted is false, values must not contain a separator or newline.
-func NewCSVReader(r io.Reader, sep byte, quoted bool) *CSVReader {
-	s := &CSVReader{bufio.NewScanner(r), sep, quoted, true, 1, 0, 0}
+// NewReader returns a new CSV scanner.
+func NewCSVReader(r io.Reader, sep byte) *CSVReader {
+	s := &CSVReader{bufio.NewScanner(r), sep, true, 1, 0, 0}
 	s.Split(s.ScanField)
 	return s
 }
@@ -78,12 +77,33 @@ func (s *CSVReader) scanField(data []byte, atEOF bool) (advance int, token []byt
 
 	s.column++
 
-	if s.quoted && len(data) > 0 && data[0] == '"' { // quoted field (may contains separator, newline and escaped quote)
+	// No data.
+	if len(data) == 0 {
+		return 0, nil, nil
+	}
+
+	// Comment.
+	if s.eor && s.Comment != 0 && data[0] == s.Comment {
+		for i, c := range data {
+			if c == '\n' {
+				s.lineno++
+				return i + 1, nil, nil
+			}
+		}
+
+		if atEOF {
+			return len(data), nil, nil
+		}
+
+		return 0, nil, nil
+	}
+
+	if data[0] == '"' {
+		var c, pc, ppc byte
+
 		startLineno := s.lineno
 		escapedQuotes := 0
 		strict := true
-
-		var c, pc, ppc byte
 
 		// Scan until the separator or newline following the closing quote (and ignore escaped quote)
 		for i := 1; i < len(data); i++ {
@@ -139,17 +159,9 @@ func (s *CSVReader) scanField(data []byte, atEOF bool) (advance int, token []byt
 			// If we're at EOF, we have a non-terminated field.
 			return 0, nil, fmt.Errorf("non-terminated quoted field at line %d, column %d", startLineno, s.column)
 		}
-	} else if s.eor && s.Comment != 0 && len(data) > 0 && data[0] == s.Comment { // line comment
-		for i, c := range data {
-			if c == '\n' {
-				s.lineno++
-				return i + 1, nil, nil
-			}
-		}
-		if atEOF {
-			return len(data), nil, nil
-		}
-	} else { // unquoted field
+
+	} else {
+		// Unquoted empty fields are allowed.
 		// Scan until separator or newline, marking end of field.
 		for i, c := range data {
 			if c == s.sep {
@@ -157,13 +169,18 @@ func (s *CSVReader) scanField(data []byte, atEOF bool) (advance int, token []byt
 				return i + 1, data[0:i], nil
 			} else if c == '\n' {
 				s.lineno++
+
 				if i > 0 && data[i-1] == '\r' {
 					s.eor = true
 					return i + 1, data[0 : i-1], nil
 				}
+
 				s.eor = true
 				return i + 1, data[0:i], nil
 			}
+
+			// Unquoted values are not allowed.
+			return 0, nil, fmt.Errorf("unquoted field at line %d, column %d", s.lineno, s.column)
 		}
 		// If we're at EOF, we have a final field. Return it.
 		if atEOF {
@@ -172,7 +189,6 @@ func (s *CSVReader) scanField(data []byte, atEOF bool) (advance int, token []byt
 		}
 	}
 
-	// Request more data.
 	return 0, nil, nil
 }
 
@@ -188,4 +204,97 @@ func unescapeQuotes(b []byte, count int, strict bool) []byte {
 		}
 	}
 	return b[:len(b)-count]
+}
+
+// greedyCSVReader attempts to read and parse all lines in a CSV file
+// regardless if there are errors.
+type greedyCSVReader struct {
+	buf    *bytes.Buffer
+	sc     *bufio.Scanner
+	line   int
+	record []string
+}
+
+// Read scans the line, writes to the buffer, and then reads as CSV.
+// The error returned will contain the line
+func (r *greedyCSVReader) Read() ([]string, error) {
+	r.line++
+
+	// Exit if the scanner is done, either an error or EOF.
+	if !r.sc.Scan() {
+		err := r.sc.Err()
+
+		if err == nil {
+			err = io.EOF
+		}
+
+		return nil, err
+	}
+
+	// Read the line as bytes, the newline is intact.
+	line := r.sc.Bytes()
+
+	// Error is always nil, per the docs.
+	// http://golang.org/pkg/bytes/index.html#Buffer.Write
+	r.buf.Write(line)
+
+	// Attempt to read buffered line as CSV data.
+	col, err := parseCSVLine(r.buf, r.record)
+
+	// Problem parsing as CSV.
+	// EOF would have been caught by the scanner.
+	if err != nil {
+		err = &ValidationError{
+			Err:   ErrBareQuote,
+			Line:  r.line,
+			Value: string(line),
+			Context: Context{
+				"column": col,
+			},
+		}
+	}
+
+	// Clear the buffer for the next line.
+	r.buf.Reset()
+
+	// Return intended error.
+	if err != nil {
+		return nil, err
+	}
+
+	return r.record, nil
+}
+
+func newGreedyCSVReader(r io.Reader, size int) *greedyCSVReader {
+	sc := bufio.NewScanner(r)
+
+	buf := bytes.NewBuffer(nil)
+
+	return &greedyCSVReader{
+		sc:     sc,
+		buf:    buf,
+		record: make([]string, size),
+	}
+}
+
+func parseCSVLine(r io.Reader, t []string) (int, error) {
+	cr := DefaultCSVReader(r)
+	cr.Comment = '#'
+	i := 0
+	m := len(t)
+
+	for cr.Scan() {
+		if i == m {
+			return cr.Column(), fmt.Errorf("too many columns. expected %d", m)
+		}
+
+		t[i] = cr.Text()
+		i++
+
+		if cr.EndOfRecord() {
+			break
+		}
+	}
+
+	return cr.Column(), cr.Err()
 }
