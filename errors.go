@@ -37,6 +37,16 @@ var ErrBareQuote = &Error{
 	Description: `Value contains bare double quotes (")`,
 }
 
+var ErrUnterminatedColumn = &Error{
+	Code:        204,
+	Description: `Column is not terminated with a quote.`,
+}
+
+var ErrUnquotedColumn = &Error{
+	Code:        205,
+	Description: `Non-empty column must be quoted.`,
+}
+
 var ErrRequiredValue = &Error{
 	Code:        300,
 	Description: "Value is required",
