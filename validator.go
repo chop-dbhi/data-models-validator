@@ -23,27 +23,21 @@ type TableValidator struct {
 	errs   int
 	length int
 	reader io.Reader
-	csv    *greedyCSVReader
+	csv    *CSVReader
 
 	// Mapped field index to field.
 	fields map[int]*client.Field
+	record []string
 }
 
 func (t *TableValidator) validateRow(row []string) error {
-	var (
-		i    int
-		verr *ValidationError
-		v    string
-		bv   *BoundValidator
-		f    *client.Field
-	)
-
 	// Line level error, individual fields are not inspected since they
 	// may be shifted relative to the header.
 	if len(row) != t.length {
 		t.result.LogError(&ValidationError{
-			Line: t.csv.line,
-			Err:  ErrExtraColumns,
+			Value: t.csv.Line(),
+			Line:  t.csv.LineNumber(),
+			Err:   ErrExtraColumns,
 			Context: Context{
 				"expected": t.length,
 				"actual":   len(row),
@@ -54,19 +48,19 @@ func (t *TableValidator) validateRow(row []string) error {
 	}
 
 	// Validate each value mapped to the respective field in the line.
-	for i, v = range row {
-		f = t.fields[i]
+	for i, v := range row {
+		f := t.fields[i]
 
 		// Run through all the validators.
-		for _, bv = range t.Plan.FieldValidators[f.Name] {
+		for _, bv := range t.Plan.FieldValidators[f.Name] {
 			if bv.Validator.RequiresValue && v == "" {
 				continue
 			}
 
-			if verr = bv.Validate(v); verr != nil {
+			if verr := bv.Validate(v); verr != nil {
 				t.result.LogError(&ValidationError{
 					Err:     verr.Err,
-					Line:    t.csv.line,
+					Line:    t.csv.LineNumber(),
 					Field:   f.Name,
 					Value:   v,
 					Context: verr.Context,
@@ -128,6 +122,7 @@ func (t *TableValidator) Init() error {
 
 	// Set of fields by position mapped to schema.
 	t.fields = fields
+	t.record = make([]string, len(head))
 
 	if len(unknown) > 0 || len(missing) > 0 {
 		matchErr = true
@@ -135,7 +130,8 @@ func (t *TableValidator) Init() error {
 
 	if lengthErr || matchErr {
 		return &ValidationError{
-			Err: ErrBadHeader,
+			Err:   ErrBadHeader,
+			Value: t.csv.Line(),
 			Context: Context{
 				"expectedLength": t.length,
 				"actualLength":   len(head),
@@ -155,14 +151,33 @@ func (t *TableValidator) Init() error {
 	return nil
 }
 
-// Next reads the next row and validates it.
+// Next reads the next row and validates it. Row and field level errors are logged and
+// not returned. Errors that are returned are EOF and unexpected errors.
 func (t *TableValidator) Next() error {
-	row, err := t.csv.Read()
+	err := t.csv.ScanLine(t.record)
 
 	if err != nil {
-		// Log and ignore.
-		if verr, ok := err.(*ValidationError); ok {
-			t.result.LogError(verr)
+		switch err {
+		case csvErrUnquotedField:
+			err = ErrUnquotedColumn
+		case csvErrUnterminatedField:
+			err = ErrUnterminatedColumn
+		case csvErrUnescapedQuote:
+			err = ErrBareQuote
+		}
+
+		switch x := err.(type) {
+		case *Error:
+			t.result.LogError(&ValidationError{
+				Err:   x,
+				Value: t.csv.Line(),
+				Line:  t.csv.LineNumber(),
+				Context: Context{
+					"column": t.csv.ColumnNumber(),
+				},
+			})
+
+			// Return nil so caller knows to continue.
 			return nil
 		}
 
@@ -170,7 +185,7 @@ func (t *TableValidator) Next() error {
 		return err
 	}
 
-	return t.validateRow(row)
+	return t.validateRow(t.record)
 }
 
 // Run executes all of the validators for the input. All parse and validation
@@ -198,7 +213,7 @@ func (t *TableValidator) Result() *Result {
 
 // New takes an io.Reader and validates it against a data model table.
 func New(reader io.Reader, table *client.Table) *TableValidator {
-	cr := newGreedyCSVReader(reader, table.Fields.Len())
+	cr := DefaultCSVReader(reader)
 
 	return &TableValidator{
 		Fields: table.Fields,

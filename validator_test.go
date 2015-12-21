@@ -31,8 +31,9 @@ func BenchmarkValidateRow(b *testing.B) {
 
 	buf := []byte(line)
 	r = bytes.NewBuffer(buf)
-	row := make([]string, 25)
-	parseCSVLine(r, row)
+
+	cr := DefaultCSVReader(r)
+	row, _ := cr.Read()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
