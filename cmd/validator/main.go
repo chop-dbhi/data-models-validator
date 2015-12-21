@@ -355,7 +355,7 @@ func errLineSteps(errs []*validator.ValidationError) []string {
 			continue
 		}
 
-		if err.Line == start+1 {
+		if err.Line == end+1 {
 			end = err.Line
 			continue
 		}
