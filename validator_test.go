@@ -16,7 +16,7 @@ var (
 )
 
 func init() {
-	c, _ := client.New("http://data-models.origins.link")
+	c, _ := client.New("https://data-models-service.github.research.chop.edu")
 	model, _ := c.ModelRevision("i2b2_pedsnet", "2.0.0")
 	table = model.Tables.Get("i2b2")
 }
