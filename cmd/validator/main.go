@@ -15,7 +15,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 )
 
-const DataModelsService = "http://data-models.origins.link"
+const DataModelsService = "https://data-models-service.research.chop.edu"
 
 var usage = `Data Models Validator - {{.Version}}
 
