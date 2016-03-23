@@ -2,6 +2,8 @@ package validator
 
 import (
 	"bytes"
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/chop-dbhi/data-models-service/client"
@@ -16,8 +18,13 @@ var (
 )
 
 func init() {
-	c, _ := client.New("https://data-models-service.research.chop.edu")
-	model, _ := c.ModelRevision("i2b2_pedsnet", "2.0.0")
+	c, err := client.New("https://data-models-service.research.chop.edu")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error initializing client: %s\n", err)
+		os.Exit(1)
+	}
+
+	model, _ := c.ModelRevision("i2b2_pedsnet", "2.0.1")
 	table = model.Tables.Get("i2b2")
 }
 
