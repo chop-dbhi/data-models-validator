@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/chop-dbhi/data-models-service/client"
+	dms "github.com/chop-dbhi/data-models-service/client"
 )
 
 var (
@@ -14,11 +14,11 @@ var (
 
 	line = `"3","\PCORI\VITAL\TOBACCO\SMOKING\","Smoked Tobacco","N","FAE",,,,"concept_cd","CONCEPT_DIMENSION","concept_path","T","like","\PCORI\VITAL\TOBACCO\SMOKING\","CDMv2","This field is new to v3.0. Indicator for any form of tobacco that is smoked.Per Meaningful Use guidance, smoking status includes any form of tobacco that is smoked, but not all tobacco use. ""Light smoker"" is interpreted to mean less than 10 cigarettes per day, or an equivalent (but less concretely defined) quantity of cigar or pipe smoke. ""Heavy smoker"" is interpreted to mean greater than 10 cigarettes per day or an equivalent (but less concretely defined) quantity of cigar or pipe smoke. ","@","2015-08-20 312:14:14.0","2015-08-20 12:14:14.0","2015-08-20 12:14:14.0","PCORNET_CDM",,,"\PCORI\VITAL\TOBACCO\","SMOKING"` + "\n"
 
-	table *client.Table
+	table *dms.Table
 )
 
 func init() {
-	c, err := client.New("https://data-models-service.research.chop.edu")
+	c, err := dms.New(dms.DefaultServiceURL)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error initializing client: %s\n", err)
 		os.Exit(1)

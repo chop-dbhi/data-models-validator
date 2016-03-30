@@ -10,12 +10,10 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/chop-dbhi/data-models-service/client"
-	"github.com/chop-dbhi/data-models-validator"
+	dms "github.com/chop-dbhi/data-models-service/client"
+	validator "github.com/chop-dbhi/data-models-validator"
 	"github.com/olekukonko/tablewriter"
 )
-
-const DataModelsService = "https://data-models-service.research.chop.edu"
 
 var usage = `Data Models Validator - {{.Version}}
 
@@ -83,7 +81,7 @@ func main() {
 
 	flag.StringVar(&modelName, "model", "", "The model to validate against. Required.")
 	flag.StringVar(&version, "version", "", "The specific version of the model to validate against. Defaults to the latest version of the model.")
-	flag.StringVar(&service, "service", DataModelsService, "The data models service to use for fetching schema information.")
+	flag.StringVar(&service, "service", dms.DefaultServiceURL, "The data models service to use for fetching schema information.")
 
 	flag.StringVar(&delim, "delim", ",", "The delimiter used in the input files or stream.")
 	flag.StringVar(&compr, "compr", "", "The compression method used on the input files or stream. If ommitted the file extension will be used to infer the compression method: .gz, .gzip, .bzip2, .bz2.")
@@ -104,7 +102,7 @@ func main() {
 	}
 
 	// Initialize data models client for service.
-	c, err := client.New(service)
+	c, err := dms.New(service)
 
 	if err != nil {
 		fmt.Println(err)
@@ -123,7 +121,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	var model *client.Model
+	var model *dms.Model
 
 	// Get the latest version.
 	if version == "" {
@@ -132,7 +130,7 @@ func main() {
 
 		var (
 			versions []string
-			_model   *client.Model
+			_model   *dms.Model
 		)
 
 		for _, _model = range revisions.List() {
@@ -155,7 +153,7 @@ func main() {
 	var (
 		hasErrors bool
 		tableName string
-		table     *client.Table
+		table     *dms.Table
 	)
 
 	for _, name := range inputs {
