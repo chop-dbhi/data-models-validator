@@ -1,0 +1,7 @@
+package: github.com/chop-dbhi/data-models-validator
+import:
+- package: github.com/blang/semver
+- package: github.com/chop-dbhi/data-models-service
+  subpackages:
+  - client
+- package: github.com/olekukonko/tablewriter

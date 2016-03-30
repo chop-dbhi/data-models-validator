@@ -1,21 +1,7 @@
 GIT_SHA := $(shell git log -1 --pretty=format:"%h")
 
-install:
-	go get github.com/blang/semver
-	go get github.com/chop-dbhi/data-models-service/client
-	go get github.com/olekukonko/tablewriter
-
-test-install: install
-	go get golang.org/x/tools/cmd/cover
-
 build-install:
 	go get github.com/mitchellh/gox
-
-test:
-	go test -cover ./...
-
-bench:
-	go test -run=none -bench=. ./...
 
 build:
 	go build \
@@ -40,4 +26,4 @@ dist-zip:
 dist: dist-build dist-zip
 
 
-.PHONY: test build dist-build dist
+.PHONY: build dist-build dist

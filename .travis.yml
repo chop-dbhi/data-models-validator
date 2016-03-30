@@ -2,12 +2,21 @@ language: go
 
 go:
   - tip
+  - 1.6
   - 1.5
-  - 1.4
-  - 1.3
   
 sudo: false
 
-install: make test-install
+env:
+    - GO15VENDOREXPERIMENT=1
 
-script: make test
+before_install:
+    - wget https://github.com/Masterminds/glide/releases/download/0.10.1/glide-0.10.1-linux-amd64.tar.gz
+    - tar zxf glide-0.10.1-linux-amd64.tar.gz
+
+install:
+    - ./linux-amd64/glide install
+    - go get golang.org/x/tools/cmd/cover
+
+script:
+    - go test -cover $(./linux-amd64/glide novendor)

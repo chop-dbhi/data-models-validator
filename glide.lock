@@ -1,0 +1,14 @@
+hash: c1173283a570a268a99d3a360974d2fab919569ad382553e5d0eaef550d240b6
+updated: 2016-03-30T09:15:53.078404961-04:00
+imports:
+- name: github.com/blang/semver
+  version: aea32c919a18e5ef4537bbd283ff29594b1b0165
+- name: github.com/chop-dbhi/data-models-service
+  version: 8d1d167576d875a244c4c03e610e904f4742f6aa
+  subpackages:
+  - client
+- name: github.com/mattn/go-runewidth
+  version: d6bea18f789704b5f83375793155289da36a3c7f
+- name: github.com/olekukonko/tablewriter
+  version: cca8bbc0798408af109aaaa239cbd2634846b340
+devImports: []

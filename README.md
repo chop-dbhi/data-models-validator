@@ -126,10 +126,12 @@ Validating against model 'pedsnet/2.0.0'
 
 ## Developers
 
+[Glide](https://glide.sh/) is used for vendoring dependencies so this must be installed and on the PATH.
+
 Install the dependencies.
 
 ```
-make install
+glide install
 ```
 
 Build the binary.
