@@ -6,8 +6,8 @@ import "github.com/blang/semver"
 const (
 	progMajor        = 1
 	progMinor        = 0
-	progPatch        = 4
-	progReleaseLevel = "final"
+	progPatch        = 5
+	progReleaseLevel = "beta"
 )
 
 var (
