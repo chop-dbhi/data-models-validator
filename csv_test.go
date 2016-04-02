@@ -8,43 +8,6 @@ import (
 	"testing"
 )
 
-var (
-	validLines = []struct {
-		Len    int
-		Line   string
-		Output []string
-	}{
-		// Base
-		{1, `""`, []string{""}},
-		{3, `"a","b","c"`, []string{"a", "b", "c"}},
-
-		// Unquoted empty value
-		{2, `"a",`, []string{"a", ""}},
-		{2, `,"a"`, []string{"", "a"}},
-		{2, `,`, []string{"", ""}},
-		{3, `,,`, []string{"", "", ""}},
-
-		// Quotes
-		{1, `"""b"""`, []string{`"b"`}},
-		{1, `"'b'"`, []string{"'b'"}},
-	}
-
-	invalidLines = []struct {
-		Len  int
-		Line string
-	}{
-		// Unquoted value.
-		{1, "a"},
-
-		// Unescaped quote
-		{1, `""a""`},
-
-		// Missing quote
-		{2, `"a,"b"`},
-		{2, `a","b"`},
-	}
-)
-
 func compareRows(a, b []string) bool {
 	if len(a) != len(b) {
 		return false
