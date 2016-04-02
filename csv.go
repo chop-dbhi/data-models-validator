@@ -173,7 +173,7 @@ func (s *CSVReader) Scan() bool {
 		// Scan until there is a non-empty line to parse.
 		for {
 			if !s.sc.Scan() {
-				// If there was an error return. Otherwise mark as EOF.
+				// If there was an error, return. Otherwise mark as EOF.
 				if err := s.sc.Err(); err != nil {
 					return false
 				}
@@ -185,6 +185,7 @@ func (s *CSVReader) Scan() bool {
 			// Set the current line. Add the new line to parsing.
 			s.line = s.sc.Text()
 
+			// Skip empty lines.
 			if s.line != "" {
 				s.data = s.sc.Bytes()
 				break
@@ -241,6 +242,7 @@ func (s *CSVReader) scanField(data []byte) (int, []byte, bool, error) {
 	}
 
 	s.column++
+	s.eor = false
 
 	// Quoted field.
 	if data[0] == '"' {
@@ -272,9 +274,8 @@ func (s *CSVReader) scanField(data []byte) (int, []byte, bool, error) {
 				oq = true
 			}
 
-			// End of field within the line.
+			// End of field with a trailing comma.
 			if pc == '"' && c == s.sep {
-				s.eor = false
 				return i + 1, unescapeQuotes(data[1:i-1], eq), true, nil
 			}
 
@@ -282,9 +283,10 @@ func (s *CSVReader) scanField(data []byte) (int, []byte, bool, error) {
 			pc = c
 		}
 
+		// Ran out of bytes.
 		s.eor = true
 
-		// Final character is a quote of the last field.
+		// Final character in the line is a quote of the last field.
 		if c == '"' {
 			return len(data), unescapeQuotes(data[1:len(data)-1], eq), false, nil
 		}
@@ -293,19 +295,23 @@ func (s *CSVReader) scanField(data []byte) (int, []byte, bool, error) {
 		return 0, nil, false, csvErrUnterminatedField
 	}
 
-	// Only unquoted empty fields are allowed.
-	// Scan until separator or newline, marking end of field.
+	// Unquoted fields. Only fail if a double quote is found.
 	for i, c := range data {
 		if c == s.sep {
 			s.eor = false
 			return i + 1, data[0:i], true, nil
 		}
 
-		// Unquoted character.
-		return 0, nil, false, csvErrUnquotedField
+		// Unquoted field with quote.
+		if c == '"' {
+			return 0, nil, false, csvErrUnquotedField
+		}
 	}
 
-	return 0, nil, false, nil
+	// Ran out of bytes.
+	s.eor = true
+
+	return len(data), data, false, nil
 }
 
 // Removes escaped quotes from the string.
@@ -313,6 +319,7 @@ func unescapeQuotes(b []byte, count int) []byte {
 	if count == 0 {
 		return b
 	}
+
 	for i, j := 0, 0; i < len(b); i, j = i+1, j+1 {
 		b[j] = b[i]
 
@@ -320,5 +327,6 @@ func unescapeQuotes(b []byte, count int) []byte {
 			i++
 		}
 	}
+
 	return b[:len(b)-count]
 }

@@ -153,9 +153,38 @@ func TestCSVScanLine(t *testing.T) {
 	}
 }
 
-func TestCSVScanLineBadInput(t *testing.T) {
+func TestCSVInput(t *testing.T) {
 	rows := []string{
 		`"name","gender",state`,
+		`Joe,"M",GA`,
+		`"Sue","""F""",NJ`,
+		`Bob,M,NY`,
+	}
+
+	buf := bytes.NewBuffer([]byte(strings.Join(rows, "\n")))
+	cr := DefaultCSVReader(buf)
+
+	var (
+		err error
+		row = make([]string, 3)
+	)
+
+	for {
+		err = cr.ScanLine(row)
+
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			t.Errorf("%d: unexpected error: %s", cr.LineNumber(), err)
+		}
+	}
+}
+
+func TestCSVScanLineBadInput(t *testing.T) {
+	rows := []string{
+		`"name", "gender",state`,
 		`Joe,"M", "GA"`,
 		`"Sue", "F", "NJ"`,
 		`"Bob",M,NY"`,
@@ -183,9 +212,7 @@ func TestCSVScanLineBadInput(t *testing.T) {
 
 		if err == nil {
 			t.Errorf("%d: expected error", i)
-		}
-
-		if cr.LineNumber() != i+1 {
+		} else if cr.LineNumber() != i+1 {
 			t.Errorf("%d: got wrong line number %d", i, cr.LineNumber())
 		}
 
@@ -199,7 +226,7 @@ func TestCSVScanLineBadInput(t *testing.T) {
 
 func TestCSVReaderBadInput(t *testing.T) {
 	rows := []string{
-		`"name","gender",state`,
+		`"name","gender", state`,
 		`Joe,"M", "GA"`,
 		`"Sue", "F", "NJ"`,
 		`"Bob",M,NY"`,
@@ -213,12 +240,15 @@ func TestCSVReaderBadInput(t *testing.T) {
 	}{
 		{"name", false, 1, 1},
 		{"gender", false, 1, 2},
-		{"state", true, 1, 3},
-		{`Joe,"M", "GA"`, true, 2, 1},
+		{" state", false, 1, 3},
+		{"Joe", false, 2, 1},
+		{"M", false, 2, 2},
+		{` "GA"`, true, 2, 3},
 		{"Sue", false, 3, 1},
 		{` "F", "NJ"`, true, 3, 2},
 		{"Bob", false, 4, 1},
-		{`M,NY"`, true, 4, 2},
+		{"M", false, 4, 2},
+		{`NY"`, true, 4, 3},
 	}
 
 	buf := bytes.NewBuffer([]byte(strings.Join(rows, "\n")))
