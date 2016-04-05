@@ -171,6 +171,13 @@ var DateValidator = &Validator{
 
 	Validate: func(s string, cxt Context) *ValidationError {
 		if _, err := time.Parse(DateLayout, s); err != nil {
+			// Since dates are a subset of datetimes, a datetime is also
+			// a valid date. The consumer will need to handle using only
+			// the date portion.
+			if err := DatetimeValidator.Validate(s, cxt); err == nil {
+				return nil
+			}
+
 			return &ValidationError{
 				Err: ErrTypeMismatchDate,
 			}
@@ -269,7 +276,7 @@ func BindFieldValidators(f *client.Field) []*BoundValidator {
 	var vs []*BoundValidator
 
 	vs = append(vs, Bind(EncodingValidator, nil))
-    // vs = append(vs, Bind(EscapedQuotesValidator, nil))
+	// vs = append(vs, Bind(EscapedQuotesValidator, nil))
 
 	if f.Required {
 		vs = append(vs, Bind(RequiredValidator, nil))
