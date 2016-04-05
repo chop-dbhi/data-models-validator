@@ -285,6 +285,21 @@ func TestCSVReaderBadInput(t *testing.T) {
 	}
 }
 
+func TestCSVExtraColumns(t *testing.T) {
+	buf := bytes.NewBufferString("one,two,three,four")
+	cr := DefaultCSVReader(buf)
+
+	// 3 columns expected.
+	toks := make([]string, 3)
+	err := cr.ScanLine(toks)
+
+	if err == nil {
+		t.Errorf("Expected error")
+	} else if err != csvErrExtraColumns {
+		t.Errorf("Expected extra columns error, got %s instead", err)
+	}
+}
+
 func BenchmarkCSVReaderScan(b *testing.B) {
 	cr := DefaultCSVReader(&bytes.Buffer{})
 

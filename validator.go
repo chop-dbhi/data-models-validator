@@ -164,6 +164,8 @@ func (t *TableValidator) Next() error {
 			err = ErrUnterminatedColumn
 		case csvErrUnescapedQuote:
 			err = ErrBareQuote
+		case csvErrExtraColumns:
+			err = ErrExtraColumns
 		}
 
 		switch x := err.(type) {
