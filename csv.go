@@ -11,6 +11,7 @@ var (
 	csvErrUnquotedField     = errors.New("unquoted field")
 	csvErrUnescapedQuote    = errors.New("bare quote")
 	csvErrUnterminatedField = errors.New("unterminated field")
+	csvErrExtraColumns      = errors.New("extra columns")
 )
 
 func clearRow(row []string) {
@@ -134,9 +135,17 @@ func (s *CSVReader) Read() ([]string, error) {
 // ScanLine scans all fields in one line and puts the values in
 // the passed slice.
 func (s *CSVReader) ScanLine(r []string) error {
-	var err error
+	var (
+		err error
+		max = len(r)
+	)
 
 	for i := 0; s.Scan(); i++ {
+		// Line too long.
+		if i == max {
+			return csvErrExtraColumns
+		}
+
 		if err = s.Err(); err != nil {
 			clearRow(r[i:])
 			return err
