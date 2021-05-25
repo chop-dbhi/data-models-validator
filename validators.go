@@ -142,6 +142,25 @@ var IntegerValidator = &Validator{
 	},
 }
 
+// IntegerValidator validates the raw value is an integer.
+var BigIntegerValidator = &Validator{
+	Name: "BigInteger",
+
+	Description: "Validates the input string is a valid BigInteger.",
+
+	RequiresValue: true,
+
+	Validate: func(s string, cxt Context) *ValidationError {
+		if _, err := strconv.ParseInt(s, 10, 64); err != nil {
+			return &ValidationError{
+				Err: ErrTypeMismatchInt,
+			}
+		}
+
+		return nil
+	},
+}
+
 // NumberValidator validates the raw value is a number.
 var NumberValidator = &Validator{
 	Name: "Number",
@@ -290,6 +309,8 @@ func BindFieldValidators(f *client.Field) []*BoundValidator {
 		}
 	case "integer":
 		vs = append(vs, Bind(IntegerValidator, nil))
+	case "biginteger":
+		vs = append(vs, Bind(BigIntegerValidator, nil))	
 	case "number", "float", "decimal":
 		vs = append(vs, Bind(NumberValidator, nil))
 	case "date":
