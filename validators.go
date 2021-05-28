@@ -123,7 +123,7 @@ var EscapedQuotesValidator = &Validator{
 	},
 }
 
-// IntegerValidator validates the raw value is an integer.
+// BigIntegerValidator validates the raw value is an integer.
 var IntegerValidator = &Validator{
 	Name: "Integer",
 
