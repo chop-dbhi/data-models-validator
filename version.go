@@ -7,7 +7,7 @@ const (
 	progMajor        = 1
 	progMinor        = 0
 	progPatch        = 6
-	progReleaseLevel = "beta"
+	progReleaseLevel = "final"
 )
 
 var (
