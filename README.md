@@ -126,16 +126,20 @@ Validating against model 'pedsnet/2.0.0'
 
 ## Developers
 
-[Glide](https://glide.sh/) is used for vendoring dependencies so this must be installed and on the PATH.
+Go 1.16+ is required.
 
-Install the dependencies.
-
-```
-glide install
-```
-
-Build the binary.
+Build a local binary.
 
 ```
 make build
 ```
+
+### Release
+
+Create a git tag on the commit to be released. Then create a build for all targets.
+
+```
+make dist
+```
+
+This will create zip files in `dist/` that can be uploaded to the Github releases page for the tag.
