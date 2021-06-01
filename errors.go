@@ -61,6 +61,10 @@ var ErrTypeMismatchInt = &Error{
 	Code:        305,
 	Description: "Value is not an integer (int32)",
 }
+var ErrTypeMismatchBigInt = &Error{
+	Code:        309,
+	Description: "Value is not an integer (int64)",
+}
 
 var ErrTypeMismatchNum = &Error{
 	Code:        306,
@@ -109,6 +113,7 @@ var Errors = map[int]*Error{
 	306: ErrTypeMismatchNum,
 	307: ErrTypeMismatchDate,
 	308: ErrTypeMismatchDateTime,
+	308: ErrTypeMismatchBigInt,
 }
 
 // ValidationError is composed of an error with an optional line and
