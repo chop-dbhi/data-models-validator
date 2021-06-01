@@ -1,29 +1,22 @@
-GIT_SHA := $(shell git log -1 --pretty=format:"%h")
+BUILD_VERSION=$(shell git log -1 --pretty=format:"%h (%ci)")
+GOOS=$(shell go env GOOS)
+GOARCH=$(shell go env GOARCH)
 
-build-install:
-	go get github.com/mitchellh/gox
-
-build:
-	go build \
-		-ldflags "-X validator.progBuild='$(GIT_SHA)'" \
-		-o $(GOPATH)/bin/data-models-validator ./cmd/validator
 
 # Build and tag binaries for each OS and architecture.
-dist-build:
+build:
 	mkdir -p dist
 
-	gox -output="dist/{{.OS}}-{{.Arch}}/data-models-validator" \
-		-ldflags "-X validator.progBuild='$(GIT_SHA)'" \
-		-os="linux windows darwin" \
-		-arch="amd64" \
-		./cmd/validator > /dev/null
+	go build -o "dist/$(GOOS)-$(GOARCH)/data-models-validator" \
+		-ldflags "-X validator.progBuild='$(BUILD_VERSION)'" \
+		./cmd/validator
 
-dist-zip:
-	cd dist && zip data-models-validator-linux-amd64.zip linux-amd64/*
-	cd dist && zip data-models-validator-windows-amd64.zip windows-amd64/*
-	cd dist && zip data-models-validator-darwin-amd64.zip darwin-amd64/*
+zip-build:
+	cd dist && zip data-models-validator-$(GOOS)-$(GOARCH).zip $(GOOS)-$(GOARCH)/*
 
-dist: dist-build dist-zip
+dist:
+	GOOS=darwin GOARCH=amd64 make build zip-build
+	GOOS=linux GOARCH=amd64 make build zip-build
+	GOOS=windows GOARCH=amd64 make build zip-build
 
-
-.PHONY: build dist-build dist
+.PHONY: dist
