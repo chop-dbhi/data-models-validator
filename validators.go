@@ -153,7 +153,7 @@ var BigIntegerValidator = &Validator{
 	Validate: func(s string, cxt Context) *ValidationError {
 		if _, err := strconv.ParseInt(s, 10, 64); err != nil {
 			return &ValidationError{
-				Err: ErrTypeMismatchInt,
+				Err: ErrTypeMismatchBigInt,
 			}
 		}
 
