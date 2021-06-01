@@ -1,0 +1,8 @@
+github.com/blang/semver v3.1.0+incompatible h1:7hqmJYuaEK3qwVjWubYiht3j93YI0WQBuysxHIfUriU=
+github.com/blang/semver v3.1.0+incompatible/go.mod h1:kRBLl5iJ+tD4TcOOxsy/0fnwebNt5EWlYSAyrTnjyyk=
+github.com/chop-dbhi/data-models-service v0.0.0-20160330130915-8d1d167576d8 h1:6ubUOzNvjibj8lUI40Q8R0f2uX5x09fzNRBruiR//64=
+github.com/chop-dbhi/data-models-service v0.0.0-20160330130915-8d1d167576d8/go.mod h1:cNs/rpDs6D2lU8QhSEniaFucD8KvpEGcxxUG664V87g=
+github.com/mattn/go-runewidth v0.0.1 h1:+EiaBVXhogb1Klb4tRJ7hYnuGK6PkKOZlK04D/GMOqk=
+github.com/mattn/go-runewidth v0.0.1/go.mod h1:LwmH8dsx7+W8Uxz3IHJYH5QSwggIsqBzpuz5H//U1FU=
+github.com/olekukonko/tablewriter v0.0.0-20160115111002-cca8bbc07984 h1:c9gVtoY8wPlhJIN2V2I1V+Fn9UcXM8mDG8IHv/1c3r8=
+github.com/olekukonko/tablewriter v0.0.0-20160115111002-cca8bbc07984/go.mod h1:vsDQFd/mU46D+Z4whnwzcISnGGzXWMclvtLoiIKAKIo=
