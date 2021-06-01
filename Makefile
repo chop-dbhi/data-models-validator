@@ -7,8 +7,9 @@ GOARCH=$(shell go env GOARCH)
 build:
 	mkdir -p dist
 
-	go build -o "dist/$(GOOS)-$(GOARCH)/data-models-validator" \
-		-ldflags "-X validator.progBuild='$(BUILD_VERSION)'" \
+	go build \
+		-o "dist/$(GOOS)-$(GOARCH)/data-models-validator" \
+		-ldflags "-X 'validator.progBuild=$(BUILD_VERSION)' -extldflags '-static'" \
 		./cmd/validator
 
 zip-build:
